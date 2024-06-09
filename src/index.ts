@@ -18,7 +18,7 @@ const ENVIRONMENT = process.env.NODE_ENV || '';
 const bot = new Telegraf(BOT_TOKEN);
 
 const replyToMessage = (ctx: Context, messageId: number, string: string) =>
-  ctx.reply(string, {
+  ctx.replyWithMarkdownV2(string, {
     reply_parameters: { message_id: messageId },
   });
 
@@ -59,7 +59,7 @@ bot.on(channelPost('text'), async (ctx) => {
   console.log("blob", blob)
 
   if (messageId) {
-    await replyToMessage(ctx, messageId, "Published!");
+    await replyToMessage(ctx, messageId, `[Published](https://telegram-microsites.vercel.app/${data.chat.username})`);
   }
 });
 
