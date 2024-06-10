@@ -4,7 +4,6 @@ import { toHTML, toMarkdownV2 } from "@telegraf/entity";
 import { put } from '@vercel/blob';
 
 import { about } from './commands';
-import { greeting } from './text';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { development, production } from './core';
 
