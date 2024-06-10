@@ -1,6 +1,6 @@
 import { Context, Telegraf } from 'telegraf';
 import { channelPost, message } from 'telegraf/filters';
-import { toHTML, toMarkdownV2 } from "@telegraf/entity";
+import { toHTML, toMarkdownV2 } from '@telegraf/entity';
 import { put } from '@vercel/blob';
 
 import { about } from './commands';
@@ -24,13 +24,13 @@ const replyToMessage = (ctx: Context, messageId: number, string: string) =>
 bot.command('about', about());
 bot.on(message('text'), async (ctx) => {
   debug('Triggered "greeting" text command');
-
   const messageId = ctx.message?.message_id;
-  console.log("Markdown:", toMarkdownV2(ctx.message));
-  const userName = `${ctx.message?.from.first_name} ${ctx.message?.from.last_name}`;
-
   if (messageId) {
-    await replyToMessage(ctx, messageId, `Hello, ${userName}!`);
+    await replyToMessage(
+      ctx,
+      messageId,
+      `Hello, ${ctx.message?.from.first_name}!`,
+    );
   }
 });
 
@@ -39,26 +39,36 @@ bot.on(channelPost('text'), async (ctx) => {
 
   const messageId = ctx.channelPost?.message_id;
 
-  const chat = await ctx.getChat()
+  const chat = await ctx.getChat();
 
-  const photoUrl = await ctx.telegram.getFileLink(chat.photo?.big_file_id ?? '');
+  const photoUrl = await ctx.telegram.getFileLink(
+    chat.photo?.big_file_id ?? '',
+  );
   const data = {
     ...ctx.channelPost,
     chat: {
       ...ctx.channelPost.chat,
       ...chat,
-      photo_url: photoUrl
+      photo_url: photoUrl,
     },
     markdown: toMarkdownV2(ctx.channelPost),
-    html: toHTML(ctx.channelPost)
-  }
-  console.log("data:", data);
+    html: toHTML(ctx.channelPost),
+  };
+  console.log('data:', data);
 
-  const blob = await put(`${data.chat.username}/data.json`, JSON.stringify(data), { access: 'public', addRandomSuffix: false });
-  console.log("blob", blob)
+  const blob = await put(
+    `${data.chat.username}/data.json`,
+    JSON.stringify(data),
+    { access: 'public', addRandomSuffix: false },
+  );
+  console.log('blob', blob);
 
   if (messageId) {
-    await replyToMessage(ctx, messageId, `[Published](https://telegram-microsites.vercel.app/${data.chat.username})`);
+    await replyToMessage(
+      ctx,
+      messageId,
+      `[Published](https://telegram-microsites.vercel.app/${data.chat.username})`,
+    );
   }
 });
 
