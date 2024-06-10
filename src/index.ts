@@ -41,9 +41,10 @@ bot.on(channelPost('text'), async (ctx) => {
 
   const chat = await ctx.getChat();
 
-  const photoUrl = await ctx.telegram.getFileLink(
-    chat.photo?.big_file_id ?? '',
-  );
+  let photoUrl: string | URL = '';
+  if (chat.photo) {
+    photoUrl = await ctx.telegram.getFileLink(chat.photo?.big_file_id ?? '');
+  }
   const data = {
     ...ctx.channelPost,
     chat: {
