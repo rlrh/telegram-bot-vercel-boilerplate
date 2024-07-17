@@ -4,7 +4,6 @@ import { toHTML, toMarkdownV2 } from '@telegraf/entity';
 import { put } from '@vercel/blob';
 
 import { about } from './commands';
-import { greeting } from './text';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { development, production } from './core';
 
@@ -25,13 +24,14 @@ const replyToMessage = (ctx: Context, messageId: number, string: string) =>
 bot.command('about', about());
 bot.on(message('text'), async (ctx) => {
   debug('Triggered "greeting" text command');
-
   const messageId = ctx.message?.message_id;
-  console.log('Markdown:', toMarkdownV2(ctx.message));
-  const userName = `${ctx.message?.from.first_name} ${ctx.message?.from.last_name}`;
 
   if (messageId) {
-    await replyToMessage(ctx, messageId, `Hello, ${userName}!`);
+    await replyToMessage(
+      ctx,
+      messageId,
+      `Hello, ${ctx.message?.from.first_name}!`,
+    );
   }
 });
 
@@ -42,9 +42,10 @@ bot.on(channelPost('text'), async (ctx) => {
 
   const chat = await ctx.getChat();
 
-  const photoUrl = await ctx.telegram.getFileLink(
-    chat.photo?.big_file_id ?? '',
-  );
+  let photoUrl: string | URL = '';
+  if (chat.photo) {
+    photoUrl = await ctx.telegram.getFileLink(chat.photo?.big_file_id ?? '');
+  }
   const data = {
     ...ctx.channelPost,
     chat: {
