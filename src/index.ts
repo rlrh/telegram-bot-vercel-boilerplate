@@ -65,14 +65,14 @@ bot.on(channelPost('text'), async (ctx) => {
   );
   console.log('blob', blob);
 
-  ctx.editMessageReplyMarkup(
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback('▲', String(messageId)),
-        Markup.button.callback('▼', String(messageId)),
-      ],
-    ]).reply_markup,
-  );
+  // ctx.editMessageReplyMarkup(
+  //   Markup.inlineKeyboard([
+  //     [
+  //       Markup.button.callback('▲', String(messageId)),
+  //       Markup.button.callback('▼', String(messageId)),
+  //     ],
+  //   ]).reply_markup,
+  // );
 
   if (messageId) {
     await replyToMessage(
