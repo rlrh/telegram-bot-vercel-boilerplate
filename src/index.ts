@@ -59,19 +59,19 @@ bot.on(channelPost('text'), async (ctx) => {
   console.log('data:', data);
 
   const blob = await put(
-    `${data.chat.username}/data.json`,
+    `${data.chat.username || data.chat.id}/data.json`,
     JSON.stringify(data),
     { access: 'public', addRandomSuffix: false },
   );
   console.log('blob', blob);
 
-  ctx.editMessageReplyMarkup(
-    Markup.inlineKeyboard([
-      [
-        Markup.button.switchToCurrentChat('Copy', toMarkdownV2(ctx.channelPost)),
-      ],
-    ]).reply_markup,
-  );
+  // ctx.editMessageReplyMarkup(
+  //   Markup.inlineKeyboard([
+  //     [
+  //       Markup.button.switchToCurrentChat('Copy', toMarkdownV2(ctx.channelPost)),
+  //     ],
+  //   ]).reply_markup,
+  // );
 
   if (messageId) {
     await replyToMessage(
