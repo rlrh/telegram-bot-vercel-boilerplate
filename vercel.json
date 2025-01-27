@@ -7,5 +7,9 @@
       "destination": "api/index.ts"
     }
   ],
-  "redirects": [{ "source": "/", "destination": "/api", "permanent": false }]
+  "redirects": [{ "source": "/", "destination": "/api", "permanent": false }],
+  "crons": [{
+    "path": "/api/cron",
+    "schedule": "*/5 * * * *"
+  }]
 }
