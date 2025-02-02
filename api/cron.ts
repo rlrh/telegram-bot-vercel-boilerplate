@@ -1,9 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { startVercelCron } from '../src';
+import { updateExpiredFiles } from '../src';
 
 export default async function handle(req: VercelRequest, res: VercelResponse) {
   try {
-    await startVercelCron(req, res);
+    await updateExpiredFiles(req.query.expiryMinutes ? Number(req.query.expiryMinutes) : undefined);
     res.status(200).end('Cron successful!');
   } catch (e: any) {
     res.statusCode = 500;

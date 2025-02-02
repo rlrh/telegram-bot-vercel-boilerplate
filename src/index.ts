@@ -14,9 +14,12 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { development, production } from './core';
 
 import createDebug from 'debug';
-import { getExpiredFiles, isChatRegistered, updateFileUrl, upsertFile } from './core/db';
-
-const debug = createDebug('bot:greeting_text');
+import {
+  getExpiredFiles,
+  isChatRegistered,
+  updateFileUrl,
+  upsertFile,
+} from './core/db';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ENVIRONMENT = process.env.NODE_ENV || '';
@@ -42,51 +45,89 @@ bot.command('about', about());
 //   }
 // });
 
-bot.on(channelPost('text'), async (ctx) => {
-  debug('Triggered channel post');
+// bot.on(channelPost('text'), async (ctx) => {
+//   debug('Triggered channel post');
 
-  // const messageId = ctx.channelPost?.message_id;
+//   const messageId = ctx.channelPost?.message_id;
 
-  // const chat = await ctx.getChat();
+//   const chat = await ctx.getChat();
 
-  // let photoUrl: string | URL = '';
-  // if (chat.photo) {
-  //   photoUrl = await ctx.telegram.getFileLink(chat.photo?.big_file_id ?? '');
-  // }
-  // const data = {
-  //   ...ctx.channelPost,
-  //   chat: {
-  //     ...ctx.channelPost.chat,
-  //     ...chat,
-  //     photo_url: photoUrl,
-  //   },
-  //   markdown: toMarkdownV2(ctx.channelPost),
-  //   html: toHTML(ctx.channelPost),
-  // };
-  // console.log('data:', data);
+//   let photoUrl: string | URL = '';
+//   if (chat.photo) {
+//     photoUrl = await ctx.telegram.getFileLink(chat.photo?.big_file_id ?? '');
+//   }
+//   const data = {
+//     ...ctx.channelPost,
+//     chat: {
+//       ...ctx.channelPost.chat,
+//       ...chat,
+//       photo_url: photoUrl,
+//     },
+//     markdown: toMarkdownV2(ctx.channelPost),
+//     html: toHTML(ctx.channelPost),
+//   };
+//   console.log('data:', data);
 
-  // const blob = await put(
-  //   `${data.chat.username || data.chat.id}/data.json`,
-  //   JSON.stringify(data),
-  //   { access: 'public', addRandomSuffix: false },
-  // );
-  // console.log('blob', blob);
+//   const blob = await put(
+//     `${data.chat.username || data.chat.id}/data.json`,
+//     JSON.stringify(data),
+//     { access: 'public', addRandomSuffix: false },
+//   );
+//   console.log('blob', blob);
 
-  // // ctx.editMessageReplyMarkup(
-  // //   Markup.inlineKeyboard([
-  // //     [
-  // //       Markup.button.switchToCurrentChat('Copy', toMarkdownV2(ctx.channelPost)),
-  // //     ],
-  // //   ]).reply_markup,
-  // // );
+//   ctx.editMessageReplyMarkup(
+//     Markup.inlineKeyboard([
+//       [
+//         Markup.button.switchToCurrentChat('Copy', toMarkdownV2(ctx.channelPost)),
+//       ],
+//     ]).reply_markup,
+//   );
 
-  // if (messageId) {
-  //   await replyToMessage(
-  //     ctx,
-  //     messageId,
-  //     `[Published](https://telegram-microsites.vercel.app/${data.chat.username})`,
-  //   );
-  // }
+//   if (messageId) {
+//     await replyToMessage(
+//       ctx,
+//       messageId,
+//       `[Published](https://telegram-microsites.vercel.app/${data.chat.username})`,
+//     );
+//   }
+// });
+
+bot.on(message('text'), async (ctx) => {
+  const message = ctx.message;
+  if (!message) {
+    console.warn('message not found');
+    return;
+  }
+  console.log('received new message or edited text message:', message);
+
+  const originalChatId = Number(String(message.chat.id).slice(4));
+  if (!isChatRegistered(originalChatId)) {
+    console.warn('chat not registered');
+    return;
+  }
+
+  if (!message.text.includes('Chat action')) {
+    console.warn('message does not contain "Chat action"');
+    return;
+  }
+
+  const chat = await ctx.getChat();
+  if (chat.photo) {
+    const fileId = chat.photo.small_file_id;
+    const fileUrl = await ctx.telegram.getFileLink(fileId);
+    const fileSuccess = await upsertFile(
+      fileId,
+      fileUrl.toString(),
+      'chat_photo',
+      originalChatId,
+      -1,
+    );
+    if (!fileSuccess) {
+      console.warn('chat photo failed to upload', { chatId: originalChatId });
+      return;
+    }
+    console.log('chat photo successfully uploaded', { chatId: originalChatId });
+  }
 });
 
 // Handle media messages (photos, videos, documents, audio)
@@ -110,21 +151,25 @@ bot.on(
     editedChannelPost('audio'),
   ),
   async (ctx: Context) => {
-    const message = ctx.message || ctx.editedMessage || ctx.channelPost || ctx.editedChannelPost;
+    const message =
+      ctx.message ||
+      ctx.editedMessage ||
+      ctx.channelPost ||
+      ctx.editedChannelPost;
     if (!message) {
-      debug('message not found');
+      console.warn('message not found');
       return;
     }
-    debug('received message or edited message:', message);
+    console.log('received new message or edited media message:', message);
 
-    const originalChatId = Number(String(message.chat.id).slice(4))
+    const originalChatId = Number(String(message.chat.id).slice(4));
     if (!isChatRegistered(originalChatId)) {
-      debug('chat not registered');
+      console.warn('chat not registered');
       return;
     }
 
     let fileId: string | undefined;
-    let fileType: string = "unknown";
+    let fileType: string = 'unknown';
     // Extract file_id based on media type
     if ('photo' in message) {
       // Get highest-resolution photo (last in the array)
@@ -143,29 +188,60 @@ bot.on(
     }
 
     if (!fileId) {
-      debug('media not found');
+      console.warn('media not found');
       return;
     }
-
     let mediaGroupId: string | undefined = undefined;
     if ('media_group_id' in message) {
       mediaGroupId = message.media_group_id;
-    } 
+    }
 
     const fileUrl = await ctx.telegram.getFileLink(fileId);
-    const success = await upsertFile(fileId, fileUrl.toString(), fileType, originalChatId, message.message_id, mediaGroupId);
+    const success = await upsertFile(
+      fileId,
+      fileUrl.toString(),
+      fileType,
+      originalChatId,
+      message.message_id,
+      mediaGroupId,
+    );
     if (!success) {
-      debug('media failed to upload');
-      return;
+      console.warn('media failed to upload', {
+        fileId,
+        fileUrl: fileUrl.toString(),
+        fileType,
+        messageId: message.message_id,
+        chatId: originalChatId,
+        mediaGroupId,
+      });
     }
-    debug('media succesfully uploaded', { fileId, fileUrl: fileUrl.toString(), fileType, messageId: message.message_id, chatId: originalChatId, mediaGroupId });
+    console.log('media successfully uploaded', {
+      fileId,
+      fileUrl: fileUrl.toString(),
+      fileType,
+      messageId: message.message_id,
+      chatId: originalChatId,
+      mediaGroupId,
+    });
   },
 );
 
-// bot.on('callback_query', async (ctx) => {
-//   // Using context shortcut
-//   await ctx.answerCbQuery()
-// })
+export const updateExpiredFiles = async (expiryMinutes: number = 60) => {
+  const expiredFiles = await getExpiredFiles(expiryMinutes);
+  for (const file of expiredFiles) {
+    try {
+      const fileUrl = await bot.telegram.getFileLink(file.file_id);
+      const success = await updateFileUrl(file.file_id, fileUrl.toString());
+      if (!success) {
+        throw new Error('database error');
+      }
+      console.log('successfully updated media url');
+    } catch (error) {
+      console.warn('failed to update media url:', error);
+      continue;
+    }
+  }
+};
 
 //prod mode (Vercel)
 export const startVercel = async (req: VercelRequest, res: VercelResponse) => {
@@ -173,19 +249,3 @@ export const startVercel = async (req: VercelRequest, res: VercelResponse) => {
 };
 //dev mode
 ENVIRONMENT !== 'production' && development(bot);
-
-export const startVercelCron = async (
-  req: VercelRequest,
-  res: VercelResponse,
-) => {
-  const expiredFiles = await getExpiredFiles(60);
-  for (const file of expiredFiles) {
-    const fileUrl = await bot.telegram.getFileLink(file.file_id);
-    const success = await updateFileUrl(file.file_id, fileUrl.toString());
-    if (!success) {
-      debug('failed to update media url');
-      continue;
-    }
-    debug('successfully updated media url');
-  }
-};
